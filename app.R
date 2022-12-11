@@ -460,7 +460,6 @@ server <- function(input, output){
   
   # Function to convert genotypes in punnett table to phenotypic
   # groups
-  # This can easily be converted into a function
   nn <- function(x, y){
     for(i in 1:length(x)){
       
@@ -476,9 +475,9 @@ server <- function(input, output){
     return(x)
   }
   
-  
+  #' Convert genotypes in Punnett square to phnotypic groups assuming complete dominance
   #' Split genotypes in punnett square into individual loci
-  #' Output is a list object
+  #' Output is a data frame object
   testdf <- eventReactive(input$pheno,{
     # req(input$pheno, pun1(), cancelOutput = TRUE)
     
@@ -489,7 +488,7 @@ server <- function(input, output){
     x <- strsplit(as.vector(pun1()), "(?<=.{2})", perl = TRUE)
       
     
-     # View phenotypic groups
+     # Use nn function to convert genotypes to phenotypic groups
      aa <- nn(x, NLoci())
      
      #' Melt punnett square into a data frame to plot genotypes and 
