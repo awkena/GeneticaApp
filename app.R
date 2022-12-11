@@ -458,9 +458,9 @@ server <- function(input, output){
   })
   
   
-  # Function to convert genotypes in punnett table to phenotypic
-  # groups
-  # This can easily be converted into a function
+  #' Function to convert genotypes in punnett table to phenotypic
+  #' groups
+  
   nn <- function(x, y){
     for(i in 1:length(x)){
       
@@ -477,10 +477,10 @@ server <- function(input, output){
   }
   
   
-  #' Split genotypes in punnett square into individual loci
-  #' Output is a list object
+  #' Convert genotypes in Punnett square to phenotypic groups assuming complete dominance
+  #' Split genotypes in Punnett square into individual loci
+  #' Output is a data frame object
   testdf <- eventReactive(input$pheno,{
-    # req(input$pheno, pun1(), cancelOutput = TRUE)
     
     input$pheno
     
@@ -489,7 +489,7 @@ server <- function(input, output){
     x <- strsplit(as.vector(pun1()), "(?<=.{2})", perl = TRUE)
       
     
-     # View phenotypic groups
+    #' Use nn function to convert genotypes to phenotypic groups
      aa <- nn(x, NLoci())
      
      #' Melt punnett square into a data frame to plot genotypes and 
@@ -523,9 +523,18 @@ server <- function(input, output){
                           label = geno, fill=phenotype)) +
     isolate({theme(axis.text=element_text(size=15*2/NLoci()),
           axis.title=element_text(size=14,face="bold"))}) +
-    labs(x = 'Female gamete', y = 'Male gamete',
-         title = 'Phenotypic classes for genotypes in punnett square',
-         subtitle = "Assuming complete dominance at each locus")+
+    isolate({labs(x = 'Female gamete', y = 'Male gamete',
+         title = 'Phenotypic classes for genotypes, assuming complete dominance at all loci.',
+         subtitle = paste('This cross involved', NLoci(), 'gene loci.'))}) +
+    theme(plot.title = element_text(family = "serif",
+                                    color = "blue",
+                                    size = 20,
+                                    hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0,
+                                       family = "serif",
+                                       face = "bold",
+                                       color = "darkviolet",
+                                       size = 18)) +
     isolate({geom_text(colour = "black", size = 6*2/NLoci(), fontface = 'bold',
               hjust = 0.5)}) +
     geom_tile(alpha = 0.5)
