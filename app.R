@@ -499,11 +499,9 @@ server <- function(input, output){
     x <- strsplit(as.vector(pun1()), "(?<=.{2})", perl = TRUE)
       
     
-<<<<<<< HEAD
-    #' Use nn function to convert genotypes to phenotypic groups
-=======
+
      # Use nn function to convert genotypes to phenotypic groups
->>>>>>> e196f6efcb03d97f9cf212681d86bc2db668e25f
+
      aa <- nn(x, NLoci())
      
      #' Melt punnett square into a data frame to plot genotypes and 
