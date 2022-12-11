@@ -458,9 +458,14 @@ server <- function(input, output){
   })
   
   
+<<<<<<< HEAD
   #' Function to convert genotypes in punnett table to phenotypic
   #' groups
   
+=======
+  # Function to convert genotypes in punnett table to phenotypic
+  # groups
+>>>>>>> e196f6efcb03d97f9cf212681d86bc2db668e25f
   nn <- function(x, y){
     for(i in 1:length(x)){
       
@@ -476,9 +481,14 @@ server <- function(input, output){
     return(x)
   }
   
+<<<<<<< HEAD
   
   #' Convert genotypes in Punnett square to phenotypic groups assuming complete dominance
   #' Split genotypes in Punnett square into individual loci
+=======
+  #' Convert genotypes in Punnett square to phnotypic groups assuming complete dominance
+  #' Split genotypes in punnett square into individual loci
+>>>>>>> e196f6efcb03d97f9cf212681d86bc2db668e25f
   #' Output is a data frame object
   testdf <- eventReactive(input$pheno,{
     
@@ -489,7 +499,11 @@ server <- function(input, output){
     x <- strsplit(as.vector(pun1()), "(?<=.{2})", perl = TRUE)
       
     
+<<<<<<< HEAD
     #' Use nn function to convert genotypes to phenotypic groups
+=======
+     # Use nn function to convert genotypes to phenotypic groups
+>>>>>>> e196f6efcb03d97f9cf212681d86bc2db668e25f
      aa <- nn(x, NLoci())
      
      #' Melt punnett square into a data frame to plot genotypes and 
