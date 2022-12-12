@@ -146,7 +146,7 @@ ui <- fluidPage(theme = shinytheme("united"),
   
  tabPanel("Phenotype",
    fluidRow(
-    
+    br(),
     div(id = "dom",
             
         tags$style( "#dom{
@@ -158,7 +158,17 @@ ui <- fluidPage(theme = shinytheme("united"),
             
       column(5,
       
-      checkboxInput("dom", "Assume Complete Dominance", value = TRUE),
+      selectInput(inputId = "type", 
+                  label = "Select gene interaction",
+                  choices = c("Independent assortment",
+                              "Dominant epistasis",
+                              "Recessive epistasis",
+                              "Duplicate dominant epistasis",
+                              "Duplicate recessive epistasis",
+                              "Dominant and recessive epistasis"),
+                  selected = "Independent assortment"),
+      
+      checkboxInput("dom", "Assume complete dominance", value = TRUE),
       
       helpText("For the best output, the number of loci should not exceed 4.", 
                style = 'color: red;'),
@@ -187,9 +197,7 @@ ui <- fluidPage(theme = shinytheme("united"),
            h4(tags$strong("Phenotypic ratio:"),
               br(), br(),
               htmlOutput("pheno_ratio")), 
-           
-  
-  ))),
+    ))),
   
   
   hr(),
@@ -483,12 +491,10 @@ server <- function(input, output){
     
     input$pheno
     
-    if(input$dom == TRUE){
+    if(input$dom == TRUE & input$type == 'Independent assortment'){
     
     x <- strsplit(as.vector(pun1()), "(?<=.{2})", perl = TRUE)
       
-    
-
      # Use nn function to convert genotypes to phenotypic groups
 
      aa <- nn(x, NLoci())
@@ -515,17 +521,16 @@ server <- function(input, output){
   
   observeEvent(input$pheno,{
     
-    req(input$pheno, pun1(), cancelOutput = TRUE)
-    
+    req(testdf(), cancelOutput = TRUE)
     
     output$comp_plot <- renderPlot({
-  
+      if(input$dom == TRUE & input$type == 'Independent assortment'){
   p <- ggplot2::ggplot(testdf(), aes(x = Var1, y = Var2, 
                           label = geno, fill=phenotype)) +
     isolate({theme(axis.text=element_text(size=15*2/NLoci()),
           axis.title=element_text(size=14,face="bold"))}) +
     isolate({labs(x = 'Female gamete', y = 'Male gamete',
-         title = 'Phenotypic classes for genotypes, assuming complete dominance at all loci.',
+         title = 'This display assumes complete dominance and independent assortment at all loci.',
          subtitle = paste('This cross involved', NLoci(), 'gene loci.'))}) +
     theme(plot.title = element_text(family = "serif",
                                     color = "blue",
@@ -540,26 +545,29 @@ server <- function(input, output){
               hjust = 0.5)}) +
     geom_tile(alpha = 0.5)
   p
-  
+      }
     })
     
   })
   
   observeEvent(input$pheno,{
     
-    req(input$pheno, pun1(), cancelOutput = TRUE)
+    req(testdf(), cancelOutput = TRUE)
   
  
   output$pheno_ratio <- renderUI({
     
-    str7 <- isolate({paste("Assuming complete dominance, there would be", 
+    if(input$dom == TRUE & input$type == 'Independent assortment'){
+    
+      str7 <- isolate({paste("Assuming complete dominance, there would be", 
                   length(unique(testdf()$phenotype)), "phenotypic classes.")})
     pr <- paste(sort(table(testdf()$phenotype), decreasing = T), collapse = ':')
     
-  str8 <- isolate({paste("The phenotypic ratio is", pr)})
+    str8 <- isolate({paste("The phenotypic ratio is", pr)})
     
     isolate({HTML(paste(str7, str8,  sep = "<br/> <br/>"))
     })
+    }
   
   }) 
   
