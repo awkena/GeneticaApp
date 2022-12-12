@@ -38,7 +38,7 @@ ui <- fluidPage(theme = shinytheme("united"),
        
        column(4,
               
-        helpText("Enter LETTERS of the English alphabets ONLY.", 
+        helpText("Enter LETTERS of the English alphabet ONLY.", 
                  style = 'color: red;'),
         helpText("Use a SINGLE letter for each allele at a locus.", 
                  style = 'color: red;'),
