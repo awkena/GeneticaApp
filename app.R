@@ -237,7 +237,9 @@ ui <- fluidPage(theme = shinytheme("united"),
 # Define server logic 
 server <- function(input, output){
   
-  # Function to split inputted parental genotypes into alleles
+  #' Function to split inputted parental genotypes into alleles
+  #' Input data is a string object of parental genotypes with no white spaces
+  #' Output is a lsit object of split alleles at each locus
   split_geno <- function(x){
     
     geno <- gsub(" ", "", x) # Remove white spaces
@@ -259,14 +261,18 @@ server <- function(input, output){
   }
   
   
-  # Check whether locus will segregate using this function
+  #' Check whether locus will segregate using this function
+  #' Input data is list object of split alleles for each locus
+  #' Output is a string object
+  
   Seg <- function(x){
     
     if(x[[1]] == x[[2]]){paste("Locus", toupper(x[[1]]), "is homozygous, hence will not segregate")
     } else(paste("Locus", toupper(x[[1]]), "is heterozygous, hence will segregate"))}
   
   #' Function to generate parental gametes
-  #' input data is split alleles for each locus
+  #' input data is a list object of split alleles for each locus
+  #' Output is a factor object of parental gametes
   gamete <- function(x){
     
     gg <- expand.grid(x) # Generates allele combinations
@@ -277,7 +283,8 @@ server <- function(input, output){
     return(gam)
   }
   
-  # Function to order allele combinations -- Dominant allele first
+  #' Function to order allele combinations -- Dominant allele first
+  #' Input data is a list object; output is a vector of strings
   JJ <- function(x){
     
     if(x[[1]] == x[[2]]){paste0(x[[1]], x[[1]])
@@ -287,7 +294,7 @@ server <- function(input, output){
     }
   
   #' Function to check if locus is heterozygous
-  #' Input data should a list of split alleles for each locus
+  #' Input data should be a list object; output is a logical object
   is.het <- function(x){
     if(x[[1]] != x[[2]]){
       het <- TRUE
@@ -298,8 +305,9 @@ server <- function(input, output){
     
   }
   
-  # Function to convert genotypes in punnett table to phenotypic
-  # groups
+  #' Function to convert genotypes in punnett table to phenotypic
+  #' groups
+  #' Input data is a list object; output is a list object
   
   nn <- function(x, y){
     for(i in 1:length(x)){
@@ -316,7 +324,9 @@ server <- function(input, output){
     return(x)
   }
   
-  # Function to convert phenotypic data to digenic epistatic types
+  #' Function to convert phenotypic data to digenic epistatic types
+  #' Input data is a data frame; output is a data frame
+  
   epist <- function(x, loci.m = NULL, loci.p = NULL, NLoci = 2,
                     type = c('DDE', 'DRE', 'DE', 'RE', 'DnRE')){
      
@@ -367,7 +377,7 @@ server <- function(input, output){
   }
   
   #' Function to show phenotypes in Punnett square
-  #' Output is a plot
+  #' Input data is a data frame; output is a plot
   gg_plot <- function(data = NULL, fill = NULL, type = NULL,
                       NLoci = NULL) {
     
@@ -610,11 +620,8 @@ server <- function(input, output){
     
      isolate({epist(testdf(), loci.m = Loci_m(), loci.p = Loci_p(),
               NLoci = NLoci(), type = input$type)
-      
-      
+      })
     })
-  
-  })
   #' Color genotypes in punnett square based on phenotype
   #' Assuming complete dominance at each locus
   #' Easiest way is to use the ggplot2 package
@@ -635,8 +642,7 @@ server <- function(input, output){
           })
       }
       })
-      
-      
+   
     })
     
   })
@@ -677,7 +683,6 @@ server <- function(input, output){
   
   })
 }
-
 
 # Run the application 
 shinyApp(ui = ui, server = server)
