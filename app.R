@@ -138,8 +138,7 @@ ui <- fluidPage(theme = shinytheme("united"),
  hr(),
                            
                            
-  tags$h5("Copyright ", HTML("&copy"),"2021 | Alexander Wireko Kena, PhD. | Benjamin Annor, PhD. |
-        Stephen Amoah, PhD. | Richard Akromah, PhD.",  
+  tags$h5("Copyright ", HTML("&copy"),"2021 | Alexander Wireko Kena, PhD.",  
                                    align = 'center', style = 'color: blue')
                            
 ),
@@ -160,15 +159,13 @@ ui <- fluidPage(theme = shinytheme("united"),
       
       selectInput(inputId = "type", 
                   label = "Select gene interaction",
-                  choices = c("Independent assortment",
-                              "Dominant epistasis",
-                              "Recessive epistasis",
-                              "Duplicate dominant epistasis",
-                              "Duplicate recessive epistasis",
-                              "Dominant and recessive epistasis"),
+                  choices = c("Independent assortment" = "IndepA",
+                               "Dominant epistasis" = "DE",
+                              "Recessive epistasis" = "RE",
+                              "Duplicate dominant epistasis" = "DDE",
+                              "Duplicate recessive epistasis" = "DRE",
+                              "Dominant and recessive epistasis" = "DnRE"),
                   selected = "Independent assortment"),
-      
-      checkboxInput("dom", "Assume complete dominance", value = TRUE),
       
       helpText("For the best output, the number of loci should not exceed 4.", 
                style = 'color: red;'),
@@ -240,11 +237,45 @@ ui <- fluidPage(theme = shinytheme("united"),
 # Define server logic 
 server <- function(input, output){
   
+  # Function to split inputted parental genotypes into alleles
+  split_geno <- function(x){
+    
+    geno <- gsub(" ", "", x) # Remove white spaces
+    
+    NLoci <- nchar(geno)/2 # Diploid species
+    
+    # Split inputted genotype into individual loci
+    Loci <- strsplit(geno, "(?<=.{2})", perl = TRUE)  
+    
+    # Split genotypes at individual loci into alleles
+    Loci.ls <- strsplit(unlist(Loci), "")
+    
+    # Rename each locus using LETTERS
+    names(Loci.ls) <- paste0("Locus_", LETTERS[1:NLoci])
+    
+    out <- list(Loci = Loci.ls, NLoci = NLoci)
+    
+    return(out)
+  }
+  
+  
   # Check whether locus will segregate using this function
   Seg <- function(x){
     
     if(x[[1]] == x[[2]]){paste("Locus", toupper(x[[1]]), "is homozygous, hence will not segregate")
     } else(paste("Locus", toupper(x[[1]]), "is heterozygous, hence will segregate"))}
+  
+  #' Function to generate parental gametes
+  #' input data is split alleles for each locus
+  gamete <- function(x){
+    
+    gg <- expand.grid(x) # Generates allele combinations
+    
+    # Find unique gametes; output is a factor object of unique gametes
+    gam <- unique(interaction(gg[1:nrow(gg),], sep = ""))
+    
+    return(gam)
+  }
   
   # Function to order allele combinations -- Dominant allele first
   JJ <- function(x){
@@ -252,46 +283,150 @@ server <- function(input, output){
     if(x[[1]] == x[[2]]){paste0(x[[1]], x[[1]])
     } else if(x[[1]] != x[[2]] & toupper(x[[1]]) == toupper(x[[2]])){
       paste0(toupper(x[[1]]), tolower(x[[1]]))} else if(x[[1]] != x[[2]] & 
-                                                        toupper(x[[1]]) != toupper(x[[2]])){paste0(x[[1]], x[[2]])}
+            toupper(x[[1]]) != toupper(x[[2]])){paste0(x[[1]], x[[2]])}
+    }
+  
+  #' Function to check if locus is heterozygous
+  #' Input data should a list of split alleles for each locus
+  is.het <- function(x){
+    if(x[[1]] != x[[2]]){
+      het <- TRUE
+    } else if(x[[1]] == x[[2]]){
+      het <- FALSE
+    }
+    return(het)
+    
+  }
+  
+  # Function to convert genotypes in punnett table to phenotypic
+  # groups
+  
+  nn <- function(x, y){
+    for(i in 1:length(x)){
+      
+      for(j in 1:y){
+        if(x[[i]][j] == toupper(x[[i]][j])){ substr(x[[i]][j],2,2) <- '_'
+        
+        }else if(x[[i]][j] != toupper(x[[i]][j]) & x[[i]][j] != tolower(x[[i]][j]))
+        { substr(x[[i]][j],2,2) <- '_'
+        } else(x[[i]][j] <- x[[i]][j])
+      }
+      x[[i]] <- paste0(x[[i]], collapse = "")
+    }
+    return(x)
+  }
+  
+  # Function to convert phenotypic data to digenic epistatic types
+  epist <- function(x, loci.m = NULL, loci.p = NULL, NLoci = 2,
+                    type = c('DDE', 'DRE', 'DE', 'RE', 'DnRE')){
+     
+    x <- as.data.frame(x)
+    
+    mm <- all(sapply(loci.m, is.het))
+    pp <- all(sapply(loci.p, is.het))
+    
+    stopifnot('Both parents must be dihybrids, 
+                           and number of loci = 2' = c(NLoci == 2, mm == pp))
+    
+    # Extract unique phenotypes under independent assortment
+    uu <- sort(unique(x$phenotype), decreasing = F)
+    
+    # Re-code phenotypes based on the type of epistasis
+    if(type == 'DE'){
+      epi <- ifelse(x$phenotype == uu[1] | x$phenotype == uu[2], 
+                    paste(uu[1], uu[2], sep = '||'), ifelse(x$phenotype == uu[3], 
+                                                            paste(uu[3]), paste(uu[4])))
+      x$epistasis <- epi
+      
+    } else if(type == 'RE'){
+      epi <- ifelse(x$phenotype == uu[1], paste(uu[1]),
+                    ifelse(x$phenotype == uu[3] | x$phenotype == uu[4], 
+                           paste(uu[3], uu[4], sep = '||'), paste(uu[2])))
+      x$epistasis <- epi
+      
+    } else if(type == 'DDE'){
+      epi <- ifelse(x$phenotype == uu[1] | x$phenotype == uu[2] |
+                      x$phenotype == uu[3], paste(uu[1], uu[2], uu[3], sep = '||'),
+                    paste(uu[4]))
+      x$epistasis <- epi
+      
+    } else if(type == 'DRE'){
+      epi <- ifelse(x$phenotype == uu[2] | x$phenotype == uu[3] |
+                      x$phenotype == uu[4], paste(uu[2], uu[3], uu[4], sep = '||'),
+                    paste(uu[1]))
+      x$epistasis <- epi
+      
+    } else if(type == 'DnRE'){
+      epi <- ifelse(x$phenotype == uu[1] | x$phenotype == uu[2] | 
+                      x$phenotype == uu[4], paste(uu[1], uu[2], uu[4], sep = '||'),
+                    paste(uu[3]))
+      x$epistasis <- epi
+    }
+    
+    return(as.data.frame(x))
+  }
+  
+  #' Function to show phenotypes in Punnett square
+  #' Output is a plot
+  gg_plot <- function(data = NULL, fill = NULL, type = NULL,
+                      NLoci = NULL) {
+    
+    if(type == 'IndepA'){
+      title <- 'Independent assortment at all loci (9:3:3:1)'
+    }else if(type == 'DE'){
+      title <- 'Dominant epistasis (12:3:1)'
+    }else if(type == 'RE'){
+      title <- 'Recessive epistasis (9:3:4)'
+    }else if(type == 'DDE'){
+      title <- 'Duplicate dominant epistasis (15:1)'
+    }else if(type == 'DRE'){
+      title <- 'Duplicate recessive epistasis (9:7)'
+    }else if(type == 'DnRE'){
+      title <- 'Dominant and recessive epistasis (13:3)'
+    }
+    p <- ggplot2::ggplot(data, aes(x = Var1, y = Var2, 
+                                 label = geno, fill = fill)) +
+      theme(axis.text=element_text(size  =15*2/NLoci),
+            axis.title=element_text(size = 14, face = "bold")) +
+      labs(x = 'Female gamete', y = 'Male gamete', fill = 'Phenotype',
+           title = title, 
+           subtitle = paste('This cross involved', NLoci, 'gene loci.')) +
+      theme(plot.title = element_text(family = "serif",
+                                      color = "blue",
+                                      size = 20,
+                                      hjust = 0.5),
+            plot.subtitle = element_text(hjust = 0,
+                                         family = "serif",
+                                         face = "bold",
+                                         color = "darkviolet",
+                                         size = 18),
+            legend.title = element_text(color = "black", size = 18),
+            legend.text = element_text(color = "blue", size = 16)) +
+      geom_text(colour = "black", size = 6*2/NLoci, fontface = 'bold',
+                hjust = 0.5) +
+      geom_tile(alpha = 0.5)
+    p
+    
   }
   
   # Obtain number of loci from inputted maternal genotype
   NLoci <- eventReactive (input$Generate,{
-     #req(input$Geno_m, input$Generate, cancelOutput = TRUE)
     
-    nchar(gsub(" ", "", input$Geno_m))/2 }) # Diploid species
+    split_geno(input$Geno_m)$NLoci
+    
+    }) 
   
   # Generate Maternal gametes
   Loci_m <- eventReactive (input$Generate,{
  
-    # req(input$Geno_m, input$Generate, cancelOutput = TRUE)
-    
-    GenoM <- gsub(" ", "", input$Geno_m)
-    
-    # Obtain number of loci from inputted maternal genotype 
-    # NLoci_m <- nchar(GenoM)/2 # Diploid species
-    
-    # Split inputted maternal genotype into individual loci
-    LociM <- strsplit(GenoM, "(?<=.{2})", perl = TRUE)
-    
-    # Split genotypes at individual maternal loci into alleles
-    Loci.lsm <- strsplit(unlist(LociM), "")
-    
-    # Rename each locus using LETTERS
-    names(Loci.lsm) <- paste0("Locus_", LETTERS[1:NLoci()])
-    
-    Loci.lsm
+    split_geno(input$Geno_m)$Loci
   })
   
+  
+  # Maternal gametes
   gamet_m <- eventReactive (input$Generate,{
     
-    #req(input$Generate, Loci_m(), input$Geno_m, cancelOutput = TRUE)
-    
-    Gamete1 <- expand.grid(Loci_m())
-    
-    gam_m <- as.character(unique(interaction(Gamete1[1:nrow(Gamete1),], 
-                                                      sep = "")))
-    gam_m
+    gamete(Loci_m()) 
     
   })
   
@@ -317,33 +452,12 @@ server <- function(input, output){
   # Generate Paternal gametes
   Loci_p <- eventReactive (input$Generate,{
     
-    #req(input$Geno_p, input$Generate, cancelOutput = TRUE)
-    
-    GenoP <- gsub(" ", "", input$Geno_p)
-    
-    # Obtain number of loci from inputted genotype 
-    # NLoci_p <- nchar(GenoP)/2 # Diploid species
-    
-    # Split inputted genotype into individual loci
-    LociP <- strsplit(GenoP, "(?<=.{2})", perl = TRUE)
-    
-    # Split genotypes at individual loci into alleles
-    Loci.lsp <- strsplit(unlist(LociP), "")
-    
-    # Rename each locus using LETTERS
-    names(Loci.lsp) <- paste0("Locus_", LETTERS[1:NLoci()])
-    Loci.lsp
+    split_geno(input$Geno_p)$Loci
   })
   
   gamet_p <- eventReactive (input$Generate,{
-    #req(input$Geno_p, input$Generate, Loci_p(), cancelOutput = TRUE)
     
-      Gamete2 <- expand.grid(Loci_p())
-    
-    gam_p <- as.character(unique(interaction(Gamete2[1:nrow(Gamete2),], 
-                                                      sep = "")))
-    gam_p
-    
+    gamete(Loci_p())
   })
   
   # Output Paternal gametes
@@ -368,11 +482,6 @@ server <- function(input, output){
   # Generate punnett square
   
   pun1 <- eventReactive(input$Cross,{
-    #req(input$Generate, gamet_m(), gamet_p(), input$Geno_m, input$Geno_p,
-        #cancelOutput = TRUE)
-    
-    
-    # input$Generate
     
     # Create an empty matrix to save results
     
@@ -380,7 +489,6 @@ server <- function(input, output){
     
     rownames(pun) <- gamet_m()
     colnames(pun) <- gamet_p()
-    
     
       for(i in rownames(pun)){
         for(j in colnames(pun)){
@@ -395,7 +503,6 @@ server <- function(input, output){
           pun[i,j] <- KK
           
         }
-        
         
       }
     
@@ -465,25 +572,6 @@ server <- function(input, output){
     }) 
   })
   
-  
-  # Function to convert genotypes in punnett table to phenotypic
-  # groups
-
-  nn <- function(x, y){
-    for(i in 1:length(x)){
-      
-      for(j in 1:y){
-        if(x[[i]][j] == toupper(x[[i]][j])){ substr(x[[i]][j],2,2) <- '_'
-        
-        }else if(x[[i]][j] != toupper(x[[i]][j]) & x[[i]][j] != tolower(x[[i]][j]))
-        { substr(x[[i]][j],2,2) <- '_'
-        } else(x[[i]][j] <- x[[i]][j])
-      }
-      x[[i]] <- paste0(x[[i]], collapse = "")
-    }
-    return(x)
-  }
-  
   #' Convert genotypes in Punnett square to phenotypic groups assuming complete dominance
   #' Split genotypes in Punnett square into individual loci
   #' Output is a data frame object
@@ -491,7 +579,8 @@ server <- function(input, output){
     
     input$pheno
     
-    if(input$dom == TRUE & input$type == 'Independent assortment'){
+    if(input$type == 'IndepA' | input$type == 'DE'|input$type == 'RE'| input$type =='DDE'|
+       input$type == 'DRE'| input$type == 'DnRE'){
     
     x <- strsplit(as.vector(pun1()), "(?<=.{2})", perl = TRUE)
       
@@ -515,6 +604,17 @@ server <- function(input, output){
   
   })
   
+  tt <- eventReactive(input$pheno,{
+    
+    input$pheno
+    
+     isolate({epist(testdf(), loci.m = Loci_m(), loci.p = Loci_p(),
+              NLoci = NLoci(), type = input$type)
+      
+      
+    })
+  
+  })
   #' Color genotypes in punnett square based on phenotype
   #' Assuming complete dominance at each locus
   #' Easiest way is to use the ggplot2 package
@@ -524,28 +624,19 @@ server <- function(input, output){
     req(testdf(), cancelOutput = TRUE)
     
     output$comp_plot <- renderPlot({
-      if(input$dom == TRUE & input$type == 'Independent assortment'){
-  p <- ggplot2::ggplot(testdf(), aes(x = Var1, y = Var2, 
-                          label = geno, fill=phenotype)) +
-    isolate({theme(axis.text=element_text(size=15*2/NLoci()),
-          axis.title=element_text(size=14,face="bold"))}) +
-    isolate({labs(x = 'Female gamete', y = 'Male gamete',
-         title = 'This display assumes complete dominance and independent assortment at all loci.',
-         subtitle = paste('This cross involved', NLoci(), 'gene loci.'))}) +
-    theme(plot.title = element_text(family = "serif",
-                                    color = "blue",
-                                    size = 20,
-                                    hjust = 0.5),
-          plot.subtitle = element_text(hjust = 0,
-                                       family = "serif",
-                                       face = "bold",
-                                       color = "darkviolet",
-                                       size = 18)) +
-    isolate({geom_text(colour = "black", size = 6*2/NLoci(), fontface = 'bold',
-              hjust = 0.5)}) +
-    geom_tile(alpha = 0.5)
-  p
+      isolate({if(input$type == 'IndepA'){
+          isolate({gg_plot(data = testdf(), fill = testdf()$phenotype, 
+                           NLoci = NLoci(), type = input$type)  
+            })
+      }else if (input$type == 'DE'|input$type == 'RE'| input$type =='DDE'|
+                input$type == 'DRE'| input$type == 'DnRE'){
+        isolate({gg_plot(data = tt(), fill = tt()$epistasis, 
+                         NLoci = NLoci(), type = input$type) 
+          })
       }
+      })
+      
+      
     })
     
   })
@@ -557,7 +648,7 @@ server <- function(input, output){
  
   output$pheno_ratio <- renderUI({
     
-    if(input$dom == TRUE & input$type == 'Independent assortment'){
+    isolate({ if(input$type == 'IndepA'){
     
       str7 <- isolate({paste("Assuming complete dominance, there would be", 
                   length(unique(testdf()$phenotype)), "phenotypic classes.")})
@@ -565,9 +656,22 @@ server <- function(input, output){
     
     str8 <- isolate({paste("The phenotypic ratio is", pr)})
     
-    isolate({HTML(paste(str7, str8,  sep = "<br/> <br/>"))
+    isolate({HTML(paste(str7, str8,  sep = "<br/> <br/>"))})
+    
+    } else if(input$type == 'DE'|input$type == 'RE'| input$type =='DDE' |
+               input$type == 'DRE'| input$type == 'DnRE'){
+      
+      str7 <- isolate({paste("There would be", 
+              length(unique(tt()$epistasis)), "phenotypic classes.")})
+      
+      pr <- paste(table(tt()$epistasis), collapse = ':')
+      
+      str8 <- isolate({paste("The digenic epistatic ratio is", pr)})
+      
+      isolate({HTML(paste(str7, str8,  sep = "<br/> <br/>"))})
+      
+    } 
     })
-    }
   
   }) 
   
