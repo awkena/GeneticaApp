@@ -167,15 +167,18 @@ ui <- fluidPage(theme = shinytheme("united"),
                               "Dominant and recessive epistasis" = "DnRE"),
                   selected = "Independent assortment"),
       
-      helpText("For the best output, the number of loci should not exceed 4.", 
-               style = 'color: red;'),
-        
-                 tags$head(
+      tags$strong(helpText("For the best display for independent assortment, the number of loci should not exceed 4.", 
+               style = 'color: red;')),
+      
+      tags$strong(helpText("For all digenic interactions, the number of loci = 2.", 
+               style = 'color: red;')),
+      
+      tags$head(
                tags$style(HTML('#pheno{background-color: green}'))),
              actionButton("pheno", "View phenotypes"),
       
-      helpText("Generate gametes and crosses first in the Cross panel.", 
-               style = 'color: red;'),
+      tags$strong(helpText("Generate gametes and crosses first in the Cross panel.", 
+               style = 'color: red;')),
       )
   ),
   
