@@ -382,20 +382,21 @@ server <- function(input, output){
   #' Function to show phenotypes in Punnett square
   #' Input data is a data frame; output is a plot
   gg_plot <- function(data = NULL, fill = NULL, type = NULL,
-                      NLoci = NULL) {
+                      NLoci = NULL, ratio = NULL) {
     
     if(type == 'IndepA'){
-      title <- 'Independent assortment at all loci (9:3:3:1)'
+      title <- paste('Independent assortment at all loci',
+                     paste0('(', ratio, ')'))
     }else if(type == 'DE'){
-      title <- 'Dominant epistasis (12:3:1)'
+      title <- paste('Dominant epistasis', paste0('(', ratio, ')'))
     }else if(type == 'RE'){
-      title <- 'Recessive epistasis (9:3:4)'
+      title <- paste('Recessive epistasis', paste0('(', ratio, ')'))
     }else if(type == 'DDE'){
-      title <- 'Duplicate dominant epistasis (15:1)'
+      title <- paste('Duplicate dominant epistasis', paste0('(', ratio, ')'))
     }else if(type == 'DRE'){
-      title <- 'Duplicate recessive epistasis (9:7)'
+      title <- paste('Duplicate recessive epistasis', paste0('(', ratio, ')'))
     }else if(type == 'DnRE'){
-      title <- 'Dominant and recessive epistasis (13:3)'
+      title <- paste('Dominant and recessive epistasis', paste0('(', ratio, ')'))
     }
     p <- ggplot2::ggplot(data, aes(x = Var1, y = Var2, 
                                  label = geno, fill = fill)) +
@@ -625,6 +626,23 @@ server <- function(input, output){
               NLoci = NLoci(), type = input$type)
       })
     })
+  
+  # Get phenotypic ratio when gene interaction is independent assortment
+  pr_ida <- eventReactive(input$pheno,{
+    
+    input$pheno
+    paste(sort(table(testdf()$phenotype), decreasing = T), collapse = ':')
+    
+  })
+  
+  # Get phenotypic ratio when gene interaction is epistasis
+  pr_epis <- eventReactive(input$pheno,{
+    
+    input$pheno
+    paste(table(tt()$epistasis), collapse = ':')
+    
+  })
+  
   #' Color genotypes in punnett square based on phenotype
   #' Assuming complete dominance at each locus
   #' Easiest way is to use the ggplot2 package
@@ -636,12 +654,12 @@ server <- function(input, output){
     output$comp_plot <- renderPlot({
       isolate({if(input$type == 'IndepA'){
           isolate({gg_plot(data = testdf(), fill = testdf()$phenotype, 
-                           NLoci = NLoci(), type = input$type)  
+                           NLoci = NLoci(), type = input$type, ratio = pr_ida())  
             })
       }else if (input$type == 'DE'|input$type == 'RE'| input$type =='DDE'|
                 input$type == 'DRE'| input$type == 'DnRE'){
         isolate({gg_plot(data = tt(), fill = tt()$epistasis, 
-                         NLoci = NLoci(), type = input$type) 
+                         NLoci = NLoci(), type = input$type, ratio = pr_epis()) 
           })
       }
       })
@@ -649,6 +667,7 @@ server <- function(input, output){
     })
     
   })
+  
   
   observeEvent(input$pheno,{
     
@@ -661,9 +680,8 @@ server <- function(input, output){
     
       str7 <- isolate({paste("Assuming complete dominance, there would be", 
                   length(unique(testdf()$phenotype)), "phenotypic classes.")})
-    pr <- paste(sort(table(testdf()$phenotype), decreasing = T), collapse = ':')
-    
-    str8 <- isolate({paste("The phenotypic ratio is", pr)})
+        
+    str8 <- isolate({paste("The phenotypic ratio is", pr_ida())})
     
     isolate({HTML(paste(str7, str8,  sep = "<br/> <br/>"))})
     
@@ -673,9 +691,7 @@ server <- function(input, output){
       str7 <- isolate({paste("There would be", 
               length(unique(tt()$epistasis)), "phenotypic classes.")})
       
-      pr <- paste(table(tt()$epistasis), collapse = ':')
-      
-      str8 <- isolate({paste("The digenic epistatic ratio is", pr)})
+      str8 <- isolate({paste("The digenic epistatic ratio is", pr_epis())})
       
       isolate({HTML(paste(str7, str8,  sep = "<br/> <br/>"))})
       
